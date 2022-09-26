@@ -14,6 +14,12 @@ class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.withdraw()
+        if not self._show_login():
+            self.destroy()
+            return
+        self.deiconify()
+
         self.model = m.CSVModel()
 
         self.title("ABQ Data Entry Application")
@@ -80,3 +86,19 @@ class Application(tk.Tk):
 
         if filename:
             self.model = m.CSVModel(filename=filename)
+
+    @staticmethod
+    def _simple_login(username, password):
+        return username == 'abq' and password == 'Flowers'
+
+    def _show_login(self):
+        error = ''
+        title = "Login to ABQ Data Entry"
+        while True:
+            login = v.LoginDialog(self, title, error)
+            if not login.result:  # User canceled
+                return False
+            username, password = login.result
+            if self._simple_login(username, password):
+                return True
+            error = 'Login Failed'  # Loop and redisplay
