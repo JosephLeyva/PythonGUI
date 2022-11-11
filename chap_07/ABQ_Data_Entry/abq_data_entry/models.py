@@ -4,6 +4,7 @@ import os
 from .constants import FieldTypes as FT
 from decimal import Decimal
 from datetime import datetime
+import json
 
 
 class CSVModel:
@@ -84,3 +85,59 @@ class CSVModel:
                 csvwriter.writeheader()
 
             csvwriter.writerow(data)
+
+
+class SettingsModel:
+    """A model for saving settings"""
+
+    fields = {
+        'autofill date': {'type': 'bool', 'value': True},
+        'autofill sheet data': {'type': 'bool', 'value': True}
+    }
+
+    def __init__(self) -> None:
+        # determine the file path
+        filename = 'abq_settings.json'
+        self.filepath = Path.home() / filename
+
+        # load in saved values
+        self.load()
+
+    def set(self, key, value):
+        """Set a variable value"""
+
+        # self.fields[key]['value'] = value
+
+        if (
+            key in self.fields and
+            type(value).__name__ == self.fields[key]['type']
+        ):
+            self.fields[key]['value'] = value
+        else:
+            raise ValueError("Bad key or wrong variable type")
+
+    def save(self):
+        """Save the current settings to the file"""
+
+        with open(self.filepath, 'w') as fh:
+            json.dump(self.fields, fh)
+
+    def load(self):
+        """Load the settings from the file"""
+
+        # with open(self.filepath, 'r') as fh:
+        #     self.fields = json.load(fh)
+
+        # if the file doesn't exist, return
+        if not self.filepath.exists():
+            return
+
+        # open the file and read in the raw values
+        with open(self.filepath, 'r') as fh:
+            raw_values = json.load(fh)
+
+            # don't implicitly trust the raw values, but only get known keys
+            for key in self.fields:
+                if key in raw_values and 'value' in raw_values[key]:
+                    raw_value = raw_values[key]['value']
+                    self.fields[key]['value'] = raw_value

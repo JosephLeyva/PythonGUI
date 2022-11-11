@@ -6,6 +6,7 @@ from tkinter import filedialog
 from . import views as v
 from . import models as m
 from tkinter import messagebox
+from .mainmenu import MainMenu
 
 
 class Application(tk.Tk):
@@ -14,16 +15,42 @@ class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Hide window while GUI is built
         self.withdraw()
+
+        # Authenticate
         if not self._show_login():
             self.destroy()
             return
+
+        # show the window
         self.deiconify()
 
+        # Create the model
         self.model = m.CSVModel()
 
+        # Load settings
+        # self.settings = {
+        #     'autofill date': tk.BooleanVar(),
+        #     'autofill sheet data': tk.BooleanVar()
+        # }
+        self.settings_model = m.SettingsModel()
+        self._load_settings()
+
+        # Begin building the GUI
         self.title("ABQ Data Entry Application")
         self.columnconfigure(0, weight=1)
+
+        # Create the menu
+        menu = MainMenu(self, self.settings)
+        self.config(menu=menu)
+        event_callbacks = {
+            '<<FileSelect>>': self._on_file_select,
+            '<<FileQuit>>': lambda _: self.quit(),
+        }
+
+        for sequence, callback in event_callbacks.items():
+            self.bind(sequence, callback)
 
         ttk.Label(
             self,
@@ -31,7 +58,7 @@ class Application(tk.Tk):
             font=("TkDefaultFont", 16)
         ).grid(row=0)
 
-        self.recordform = v.DataRecordForm(self, self.model)
+        self.recordform = v.DataRecordForm(self, self.model, self.settings)
         self.recordform.grid(row=1, padx=10, sticky=(tk.W + tk.E))
         self.recordform.bind('<<SaveRecord>>', self._on_save)
 
@@ -89,9 +116,11 @@ class Application(tk.Tk):
 
     @staticmethod
     def _simple_login(username, password):
+        """A basic authentication backend with a hardcoded user and password"""
         return username == 'abq' and password == 'Flowers'
 
     def _show_login(self):
+        """Show login dialog and attempt to login"""
         error = ''
         title = "Login to ABQ Data Entry"
         while True:
@@ -102,3 +131,30 @@ class Application(tk.Tk):
             if self._simple_login(username, password):
                 return True
             error = 'Login Failed'  # Loop and redisplay
+
+    def _load_settings(self):
+        """Load settings into our self.settings dict"""
+
+        vartypes = {
+            'bool': tk.BooleanVar,
+            'str': tk.StringVar,
+            'int': tk.IntVar,
+            'float': tk.DoubleVar
+        }
+
+        # create our dict of settings variables from the model's settings
+        self.settings = dict()
+        for key, data in self.settings_model.fields.items():
+            vartype = vartypes.get(data['type'], tk.StringVar)
+            self.settings[key] = vartype(value=data['value'])
+        
+        # put a trace on the variables so they get stored when changed
+        for var in self.settings.values():
+            var.trace_add('write', self._save_settings)
+    
+    def _save_settings(self, *_):
+        """Save the current settings """
+
+        for key, variable in self.settings.items():
+            self.settings_model.set(key, variable.get())
+        self.settings_model.save()

@@ -29,10 +29,11 @@ class DataRecordForm(tk.Frame):
             frame.columnconfigure(i, weight=1)
         return frame
 
-    def __init__(self, parent, model, *args, **kwargs):
+    def __init__(self, parent, model, settings, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
         self.model = model
+        self.settings = settings
         fields = self.model.fields
 
         # Create a dict to keep track of input widgets
@@ -223,12 +224,13 @@ class DataRecordForm(tk.Frame):
                 var.set('')
 
         # Autofill Date
-        current_date = datetime.today().strftime('%Y-%m-%d')
-        self._vars['Date'].set(current_date)
-        self._vars['Time'].label_widget.input.focus()
+        if self.settings['autofill date'].get():
+            current_date = datetime.today().strftime('%Y-%m-%d')
+            self._vars['Date'].set(current_date)
+            self._vars['Time'].label_widget.input.focus()
 
         # check if we need to put our values back, then do it.
-        if plot not in ('', 0, plot_values[-1]):
+        if (self.settings['autofill sheet data'].get() and plot not in ('', 0, plot_values[-1])):
             self._vars['Lab'].set(lab)
             self._vars['Time'].set(time)
             self._vars['Technician'].set(technician)
